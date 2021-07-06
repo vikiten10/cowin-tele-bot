@@ -1,0 +1,111 @@
+custom:
+  configuration: ${file(configurations/dev.yml)}
+  prune:
+    automatic: true
+    number: 1
+  scripts:
+    hooks:
+      "deploy:finalize": sls invoke -f db-updater
+
+plugins:
+  - serverless-prune-plugin
+  - serverless-plugin-scripts
+
+service: ${self:custom.configuration.serviceName}
+
+frameworkVersion: "2"
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  lambdaHashingVersion: 20201221
+  region: ${self:custom.configuration.region}
+  versionFunctions: false
+  memorySize: 128
+  logRetentionInDays: 14
+  environment:
+    TOKEN: ${self:custom.configuration.botToken}
+    BOT_ID: ${self:custom.configuration.botId}
+    BOT_USERNAME: ${self:custom.configuration.botUserName}
+  layers:
+    - Fn::Join:
+        - ":"
+        - - "arn:aws:lambda"
+          - ${self:custom.configuration.region}
+          - ${self:custom.configuration.accountNumber}
+          - "layer"
+          - ${self:custom.configuration.SDKLayerName}
+          - ${self:custom.configuration.SDKLayerVersion}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+          Resource:
+            Fn::Join:
+              - ":"
+              - - "arn:aws:dynamodb"
+                - ${self:custom.configuration.region}
+                - ${self:custom.configuration.accountNumber}
+                - ${self:custom.configuration.DistrictTableName}
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:Scan
+          Resource:
+            Fn::Join:
+              - ":"
+              - - "arn:aws:dynamodb"
+                - ${self:custom.configuration.region}
+                - ${self:custom.configuration.accountNumber}
+                - ${self:custom.configuration.UsersTableName}
+
+functions:
+  slot-finder:
+    handler: teleApiHandler.main
+    timeout: 30
+    events:
+      - http:
+          path: /
+          method: post
+          cors: true
+  db-updater:
+    handler: databaseUpdater.main
+    timeout: 120
+  slot-notifier:
+    handler: notificationSender.main
+    timeout: 300
+    events:
+      - schedule: cron(0 3,15 * * ? *)
+
+resources:
+  Resources:
+    statesListTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: districts
+        AttributeDefinitions:
+          - AttributeName: districtName
+            AttributeType: S
+        KeySchema:
+          - AttributeName: districtName
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    usersListTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: users
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

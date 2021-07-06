@@ -1,2 +1,2 @@
-# cowin-tele-bot
-Telegram bot for covid vaccination slot availability
+# cowin-slot-notifier
+A serverless framework based telegram bot to notify users upon slot availabiliy

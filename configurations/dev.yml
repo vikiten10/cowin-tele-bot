@@ -1,0 +1,11 @@
+stage: dev
+region: ap-south-1
+botToken: #bot-token
+accountNumber: #aws account number
+SDKLayerName: #please create a node-sdk layer for decreased package size alternatively use "npm i aws-sdk"
+SDKLayerVersion: #version of layer
+DistrictTableName: table/districts
+UsersTableName: table/users
+serviceName: cowin-tele-bot
+botId: #bot id here
+botUserName: #bot user name here
